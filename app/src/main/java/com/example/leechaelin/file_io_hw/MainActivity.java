@@ -9,6 +9,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -28,6 +29,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.StringTokenizer;
 
 public class MainActivity extends AppCompatActivity {
     LinearLayout l1,l2;
@@ -36,7 +38,7 @@ public class MainActivity extends AppCompatActivity {
     ListView listview;
     EditText e;
     DatePicker dp;
-    int count=0;
+    int count=0,i=0;
     ArrayList<titlename> name = new ArrayList<titlename>();
     ArrayAdapter<titlename> adapter;
     @Override
@@ -54,13 +56,13 @@ public class MainActivity extends AppCompatActivity {
         listview =(ListView)findViewById(R.id.listview);
         adapter=  new ArrayAdapter<titlename>(this,android.R.layout.simple_list_item_1,name);
         listview.setAdapter(adapter);
+        init();
 
-        writing_diary();
         listview.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, final int position, long id) {
                 String path = getExternalPath();
-                File file = new File(path+"mydairy");
+                File file = new File(path+"mydairy/"+name.get(position).toString());
                 file.delete();
                 AlertDialog.Builder dlg= new AlertDialog.Builder(MainActivity.this);
                 dlg.setMessage("정말로 삭제하시겠습니까 ")
@@ -85,63 +87,86 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 try{
+                    l2.setVisibility(View.VISIBLE);
+                    l1.setVisibility(View.INVISIBLE);
+                    btnsave.setText("수정");
                     String path = getExternalPath();
-                    BufferedReader br = new BufferedReader(new FileReader(path+name.get(position).getTitlename()));
+                    String filename = path+"diary/";
 
+                    BufferedReader br = new BufferedReader(new FileReader(filename+name.get(position).getTitlename()));
+                    String readStr="";
+                    String str = null;
+
+                    while((str=br.readLine())!= null)
+                        readStr += str +"\n";
+                    String year = "20"+name.get(position).getTitlename().substring(0,1);
+                    String month = name.get(position).getTitlename().substring(4,5);
+                    String date = name.get(position).getTitlename().substring(7,8);
+                    dp.updateDate(Integer.parseInt(year),Integer.parseInt(month)+1,Integer.parseInt(date));
+
+                    btnsave.setText("저장");
+                    e.setText(readStr.substring(0,readStr.length()-1));
+
+                    br.close();
                 }catch(FileNotFoundException e){
                     e.printStackTrace();
                 }catch(IOException e){
                     e.printStackTrace();
                 }
             }
-        });
-    }
 
+        });
+
+    }
+    public void init(){
+        String path = getExternalPath();
+        File file = new File(path+"mydiary");
+        if(file.isDirectory()==false)
+            file.mkdir();
+
+    }
     public void onClick(View v){
         if(v.getId()==R.id.btn1){
             l1.setVisibility(View.INVISIBLE);
             l2.setVisibility(View.VISIBLE);
             listview.setVisibility(View.INVISIBLE);
+        }else if(v.getId()==R.id.btnsave){
+            String year = String.valueOf(dp.getYear()).substring(2);
+            String month = String.valueOf(dp.getMonth()+1);
+            String date = String.valueOf(dp.getDayOfMonth());
+            if(month.length()==1){
+                month = "0"+(dp.getMonth()+1);
+            }
+            if(date.length()==1){
+                date = "0"+dp.getDayOfMonth();
+            }
+
+            String filename = year+"-"+month+"-"+date;
+            try{
+                String path = getExternalPath();
+                BufferedWriter bw = new BufferedWriter(new FileWriter(path+"mydiary/"+filename,true));
+                bw.write(e.getText().toString());
+                bw.close();
+                Toast.makeText(getApplicationContext(),"저장완료 ",Toast.LENGTH_SHORT).show();
+                count+=1;
+            }catch (IOException e){
+                e.printStackTrace();
+                Toast.makeText(getApplicationContext(),e.getMessage()+":"+getFilesDir(),Toast.LENGTH_SHORT).show();
+            }
+
+            name.add(new titlename(filename.toString()+".memo.txt",e.getText().toString()));
+            adapter.notifyDataSetChanged();
+            l1.setVisibility(View.VISIBLE);
+            l2.setVisibility(View.INVISIBLE);
+            listview.setVisibility(View.VISIBLE);
+            change_text();
+
         }
-    }
-
-    public void writing_diary(){
-        final String filename = dp.getYear()+"-"+dp.getMonth()+"-"+dp.getDayOfMonth();
-        btnsave.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                try{
-                    String path = getExternalPath();
-
-                    BufferedWriter bw = new BufferedWriter(new FileWriter(path+"mydiary/"+filename,true));
-                    bw.write(e.getText().toString());
-                    bw.close();
-                    Toast.makeText(getApplicationContext(),"저장완료 ",Toast.LENGTH_SHORT).show();
-                    count+=1;
-                }catch (IOException e){
-                    e.printStackTrace();
-                    Toast.makeText(getApplicationContext(),e.getMessage()+":"+getFilesDir(),Toast.LENGTH_SHORT).show();
-                }
-                name.add(new titlename(filename.toString()+".memo"));
-                adapter.notifyDataSetChanged();
-                l1.setVisibility(View.VISIBLE);
-                l2.setVisibility(View.INVISIBLE);
-                listview.setVisibility(View.VISIBLE);
-                change_text();
-
-            }
-        });
-
-
-        btncancel.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                l1.setVisibility(View.VISIBLE);
-                l2.setVisibility(View.INVISIBLE);
-                listview.setVisibility(View.VISIBLE);
-            }
-        });
-
+        else if(v.getId()==R.id.btncancel){
+            l1.setVisibility(View.VISIBLE);
+            l2.setVisibility(View.INVISIBLE);
+            listview.setVisibility(View.VISIBLE);
+        }
     }
 
     public void change_text(){

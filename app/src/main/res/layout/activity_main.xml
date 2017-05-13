@@ -31,11 +31,13 @@
                 android:layout_weight="1"
                 android:text="날짜 선택 후 메모를 입력하세요"/>
             <Button
+                android:onClick="onClick"
                 android:id="@+id/btnsave"
                 android:layout_width="50dp"
                 android:layout_height="wrap_content"
                 android:text="저장"/>
             <Button
+                android:onClick="onClick"
                 android:id="@+id/btncancel"
                 android:layout_width="50dp"
                 android:layout_height="wrap_content"
