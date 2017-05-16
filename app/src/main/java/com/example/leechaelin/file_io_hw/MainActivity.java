@@ -30,6 +30,8 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.StringTokenizer;
 
 public class MainActivity extends AppCompatActivity {
@@ -90,24 +92,25 @@ public class MainActivity extends AppCompatActivity {
                             public void onClick(DialogInterface dialog, int which) {
                                 File files = new File(path + "diary/"+name.get(position).getTitlename());
                                 Log.d("file",name.get(position).getTitlename());
-                                if (!files.exists()) {
-                                    Log.d("DEBUG", "파일 없음)");
-                                }
-                                boolean remove = files.delete();
-                                if(remove){
-                                    Toast.makeText(getApplicationContext(),"삭제성공",Toast.LENGTH_LONG).show();
-
-                                }else{
-                                    Toast.makeText(getApplicationContext(),"삭제실패 ",Toast.LENGTH_SHORT).show();
-                                }
-                                File[] file = new File(path+"diary/").listFiles();
-                                String str = "";
-                                for(File f:file)
-                                    str += f.getName() + "\n" ;
-                                Toast.makeText(getApplicationContext(),str,Toast.LENGTH_LONG).show();
+//                                if (!files.exists()) {
+//                                    Log.d("DEBUG", "파일 없음)");
+//                                }
+//                                boolean remove = files.delete();
+//                                if(remove){
+//                                    Toast.makeText(getApplicationContext(),"삭제성공",Toast.LENGTH_LONG).show();
+//
+//                                }else{
+//                                    Toast.makeText(getApplicationContext(),"삭제실패 ",Toast.LENGTH_SHORT).show();
+//                                }
+//                                File[] file = new File(path+"diary/").listFiles();
+//                                String str = "";
+//                                for(File f:file)
+//                                    str += f.getName() + "\n" ;
+//                                Toast.makeText(getApplicationContext(),str,Toast.LENGTH_LONG).show();
                                 name.remove(position);
                                 adapter.notifyDataSetChanged();
                                 t.setText("등록된 메모의 갯수"+name.size());
+                                setName();
                                 Toast.makeText(getApplicationContext(),"삭제하였습니다. ",Toast.LENGTH_SHORT).show();
                             }
                         }).show();
@@ -135,10 +138,10 @@ public class MainActivity extends AppCompatActivity {
                     String year = name.get(position).toString().substring(0,4);
                     String month = name.get(position).toString().substring(5,7);
                     String date = name.get(position).toString().substring(8,10);
-//                    Log.d("year",year);
-//                    Log.d("month",month);
-//                    Log.d("date",date);
-                    dp.updateDate(Integer.parseInt(year),Integer.parseInt(month),Integer.parseInt(date));
+                    Log.d("year",year);
+                    Log.d("month",month);
+                    Log.d("date",date);
+                    dp.updateDate(Integer.parseInt(year),Integer.parseInt(month)-1,Integer.parseInt(date));
                     br.close();
                     modify = true;
                 }catch(FileNotFoundException e){
@@ -195,6 +198,7 @@ public class MainActivity extends AppCompatActivity {
                 l2.setVisibility(View.INVISIBLE);
                 listview.setVisibility(View.VISIBLE);
                 t.setText("등록된 메모 개수:"+name.size());
+                setName();
             }
 
             for(int i=0;i<name.size();i++){
@@ -233,6 +237,7 @@ public class MainActivity extends AppCompatActivity {
                 l2.setVisibility(View.INVISIBLE);
                 listview.setVisibility(View.VISIBLE);
                 t.setText("등록된 메모 개수:"+name.size());
+                setName();
             }
 
 
@@ -286,6 +291,16 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
 
+    Comparator<titlename> sorting =new Comparator<titlename>(){
 
+        @Override
+        public int compare(titlename o1, titlename o2) {
+            return o1.toString().compareToIgnoreCase(o2.getTitlename());
+        }
+    };
+    public void setName(){
+        Collections.sort(name,sorting);
+        adapter.notifyDataSetChanged();
+    }
 
 }
