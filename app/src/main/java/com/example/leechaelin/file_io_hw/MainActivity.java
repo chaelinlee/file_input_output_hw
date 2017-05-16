@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Environment;
+import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -38,9 +39,14 @@ public class MainActivity extends AppCompatActivity {
     ListView listview;
     EditText e;
     DatePicker dp;
-    int count=0,i=0;
+    int count=0;
+    String path = getExternalPath();
+    String filename = path+"diary/";
+    int index=0;
     ArrayList<titlename> name = new ArrayList<titlename>();
     ArrayAdapter<titlename> adapter;
+    boolean modify=false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,27 +62,53 @@ public class MainActivity extends AppCompatActivity {
         listview =(ListView)findViewById(R.id.listview);
         adapter=  new ArrayAdapter<titlename>(this,android.R.layout.simple_list_item_1,name);
         listview.setAdapter(adapter);
-        init();
+
+        File file = new File(path+"diary/");
+//        Log.d("path",file.toString());
+//        file.delete();
+
+        if(file.isDirectory()==false)
+            file.mkdir();
+
+        File[] files = new File(path + "diary/").listFiles();
+        for(File f:files)
+            //f.delete();
+            name.add(new titlename(f.getName()));
+        adapter.notifyDataSetChanged();
+        //Toast.makeText(getApplicationContext(),str,Toast.LENGTH_LONG).show();
+
+
 
         listview.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, final int position, long id) {
-                String path = getExternalPath();
-                File file = new File(path+"mydairy/"+name.get(position).toString());
-                file.delete();
                 AlertDialog.Builder dlg= new AlertDialog.Builder(MainActivity.this);
                 dlg.setMessage("정말로 삭제하시겠습니까 ")
                         .setNegativeButton("취소",null)
                         .setPositiveButton("확인 ", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
+                                File files = new File(path + "diary/"+name.get(position).getTitlename());
+                                Log.d("file",name.get(position).getTitlename());
+                                if (!files.exists()) {
+                                    Log.d("DEBUG", "파일 없음)");
+                                }
+                                boolean remove = files.delete();
+                                if(remove){
+                                    Toast.makeText(getApplicationContext(),"삭제성공",Toast.LENGTH_LONG).show();
+
+                                }else{
+                                    Toast.makeText(getApplicationContext(),"삭제실패 ",Toast.LENGTH_SHORT).show();
+                                }
+                                File[] file = new File(path+"diary/").listFiles();
+                                String str = "";
+                                for(File f:file)
+                                    str += f.getName() + "\n" ;
+                                Toast.makeText(getApplicationContext(),str,Toast.LENGTH_LONG).show();
                                 name.remove(position);
-                                count-=1;
                                 adapter.notifyDataSetChanged();
+                                t.setText("등록된 메모의 갯수"+name.size());
                                 Toast.makeText(getApplicationContext(),"삭제하였습니다. ",Toast.LENGTH_SHORT).show();
-                                change_text();
-
-
                             }
                         }).show();
                 return true;
@@ -90,48 +122,47 @@ public class MainActivity extends AppCompatActivity {
                     l2.setVisibility(View.VISIBLE);
                     l1.setVisibility(View.INVISIBLE);
                     btnsave.setText("수정");
-                    String path = getExternalPath();
-                    String filename = path+"diary/";
 
-                    BufferedReader br = new BufferedReader(new FileReader(filename+name.get(position).getTitlename()));
+                    //기존의 것들을 보여준다
+                    BufferedReader br = new BufferedReader(new FileReader(path+"diary/"+name.get(position).getTitlename()));
+                    //Log.d("name",name.get(position).getTitlename());
                     String readStr="";
                     String str = null;
 
                     while((str=br.readLine())!= null)
-                        readStr += str +"\n";
-                    String year = "20"+name.get(position).getTitlename().substring(0,1);
-                    String month = name.get(position).getTitlename().substring(4,5);
-                    String date = name.get(position).getTitlename().substring(7,8);
-                    dp.updateDate(Integer.parseInt(year),Integer.parseInt(month)+1,Integer.parseInt(date));
-
-                    btnsave.setText("저장");
+                        readStr += str + "\n";
                     e.setText(readStr.substring(0,readStr.length()-1));
-
+                    String year = name.get(position).toString().substring(0,4);
+                    String month = name.get(position).toString().substring(5,7);
+                    String date = name.get(position).toString().substring(8,10);
+//                    Log.d("year",year);
+//                    Log.d("month",month);
+//                    Log.d("date",date);
+                    dp.updateDate(Integer.parseInt(year),Integer.parseInt(month),Integer.parseInt(date));
                     br.close();
+                    modify = true;
                 }catch(FileNotFoundException e){
                     e.printStackTrace();
                 }catch(IOException e){
                     e.printStackTrace();
                 }
+
             }
 
         });
 
     }
-    public void init(){
-        String path = getExternalPath();
-        File file = new File(path+"mydiary");
-        if(file.isDirectory()==false)
-            file.mkdir();
 
-    }
     public void onClick(View v){
         if(v.getId()==R.id.btn1){
             l1.setVisibility(View.INVISIBLE);
             l2.setVisibility(View.VISIBLE);
             listview.setVisibility(View.INVISIBLE);
+            e.setText("");
+            btnsave.setText("완료");
+
         }else if(v.getId()==R.id.btnsave){
-            String year = String.valueOf(dp.getYear()).substring(2);
+            String year = String.valueOf(dp.getYear());
             String month = String.valueOf(dp.getMonth()+1);
             String date = String.valueOf(dp.getDayOfMonth());
             if(month.length()==1){
@@ -141,37 +172,80 @@ public class MainActivity extends AppCompatActivity {
                 date = "0"+dp.getDayOfMonth();
             }
 
-            String filename = year+"-"+month+"-"+date;
-            try{
-                String path = getExternalPath();
-                BufferedWriter bw = new BufferedWriter(new FileWriter(path+"mydiary/"+filename,true));
-                bw.write(e.getText().toString());
-                bw.close();
-                Toast.makeText(getApplicationContext(),"저장완료 ",Toast.LENGTH_SHORT).show();
-                count+=1;
-            }catch (IOException e){
-                e.printStackTrace();
-                Toast.makeText(getApplicationContext(),e.getMessage()+":"+getFilesDir(),Toast.LENGTH_SHORT).show();
+            String oldfilenames = year+"-"+month+"-"+date;
+            if(modify==true){
+                btnsave.setText("수정");
+                File files = new File(path + "diary/"+name.get(index).getTitlename());
+                files.delete();
+                name.remove(index);
+                adapter.notifyDataSetChanged();
+                try{
+                    BufferedWriter bw =new BufferedWriter(new FileWriter(filename+oldfilenames,false));
+                    bw.write(e.getText().toString());
+                    bw.close();
+                    Toast.makeText(getApplicationContext(),"파일 저장 ",Toast.LENGTH_SHORT).show();
+
+                }catch(IOException e){
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(),e.getMessage()+":"+getFilesDir(),Toast.LENGTH_SHORT).show();
+                }
+                name.add(new titlename(oldfilenames.toString()));
+                adapter.notifyDataSetChanged();
+                l1.setVisibility(View.VISIBLE);
+                l2.setVisibility(View.INVISIBLE);
+                listview.setVisibility(View.VISIBLE);
+                t.setText("등록된 메모 개수:"+name.size());
             }
 
-            name.add(new titlename(filename.toString()+".memo.txt",e.getText().toString()));
-            adapter.notifyDataSetChanged();
-            l1.setVisibility(View.VISIBLE);
-            l2.setVisibility(View.INVISIBLE);
-            listview.setVisibility(View.VISIBLE);
-            change_text();
+            for(int i=0;i<name.size();i++){
+                if(name.get(i).toString().equals(oldfilenames)){
+                    //수정모드로 변경
+                    modify = true;
+                    try{
+                        BufferedReader br = new BufferedReader(new FileReader(path+"diary/"+name.get(i).getTitlename()));
+                        //Log.d("modify",Boolean.toString(modify));
+                        index = i;
+                        String readStr = "";
+                        String str =null;
+                        while((str=br.readLine())!=null)
+                            readStr+=str+"\n";
+                        e.setText(readStr);
+                    }catch(IOException e){
+                        e.printStackTrace();
+                    }
+                }
+            }
+            if(modify==false){
+                try{
+                    BufferedWriter bw =new BufferedWriter(new FileWriter(filename+oldfilenames,false));
+                    bw.write(e.getText().toString());
+                    bw.close();
+                    Toast.makeText(getApplicationContext(),"파일 저장 ",Toast.LENGTH_SHORT).show();
+                    btnsave.setText("저장");
+
+                }catch(IOException e){
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(),e.getMessage()+":"+getFilesDir(),Toast.LENGTH_SHORT).show();
+                }
+                name.add(new titlename(oldfilenames.toString()));
+                adapter.notifyDataSetChanged();
+                l1.setVisibility(View.VISIBLE);
+                l2.setVisibility(View.INVISIBLE);
+                listview.setVisibility(View.VISIBLE);
+                t.setText("등록된 메모 개수:"+name.size());
+            }
+
 
         }
+
+
         else if(v.getId()==R.id.btncancel){
             l1.setVisibility(View.VISIBLE);
             l2.setVisibility(View.INVISIBLE);
             listview.setVisibility(View.VISIBLE);
         }
     }
-
-    public void change_text(){
-        t.setText("등록된 메모 개수:"+String.valueOf(count));
-    }
+    
     public String getExternalPath(){
         String sdPath="";
         String ext = Environment.getExternalStorageState();
@@ -179,7 +253,6 @@ public class MainActivity extends AppCompatActivity {
             sdPath=Environment.getExternalStorageDirectory().getAbsolutePath()+ "/";
         }else
             sdPath=getFilesDir()+"";
-        Toast.makeText(getApplicationContext(),sdPath,Toast.LENGTH_SHORT).show();
         return sdPath;
     }
 
